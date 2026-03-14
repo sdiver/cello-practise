@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  cello-practise:
+    build: .
+    image: cello-practise:latest
+    container_name: cello-practise
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # 持久化上传文件
+      - ./uploads:/app/uploads
+      # 持久化数据库
+      - ./data:/app/data
+      # 后端 .env 配置文件
+      - ./backend/.env:/app/backend/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    networks:
+      - cello-network
+
+  # Watchtower - 自动更新容器
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower-cello
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_MONITOR_ONLY=true
+      - TZ=Asia/Shanghai
+    command: cello-practise
+    networks:
+      - cello-network
+
+networks:
+  cello-network:
+    driver: bridge

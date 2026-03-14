@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI大提琴私教 - 智能陪练系统</title>
+    <script src="../lib/opensheetmusicdisplay.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header>
+            <h1>🎻 AI大提琴私教</h1>
+            <p class="tagline">像有私教陪练一样，每天都有进步</p>
+            <div id="user-info" style="position: absolute; top: 20px; right: 20px; display: block;">
+                <span id="user-name"></span>
+                <button onclick="logout()" style="margin-left: 10px; padding: 5px 10px; font-size: 0.8rem;">退出</button>
+            </div>
+        </header>
+
+        <!-- 导航 -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-btn active">📊 今日概览</a>
+            <a href="/tuner" class="nav-btn">🎵 调音器</a>
+            <a href="/practice" class="nav-btn">🎯 AI陪练</a>
+            <a href="/sheets" class="nav-btn">📚 琴谱库</a>
+            <a href="/progress" class="nav-btn">📈 进步追踪</a>
+            <a href="/qa" class="nav-btn">💬 问AI教练</a>
+        </nav>
+
+        <!-- 主内容 -->
+        <div id="main-content">
+            <!-- AI教练问候 -->
+            <div class="ai-coach">
+                <div class="ai-avatar">🎓</div>
+                <div class="ai-message">
+                    <div class="ai-name">AI教练</div>
+                    <div class="ai-text" id="coach-greeting">
+                        早上好！今天是你练习大提琴的第 <strong>12天</strong>。准备好开始今天的练习了吗？
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日目标 -->
+            <div class="card">
+                <div class="card-title">📋 今日目标</div>
+                <div class="daily-goals">
+                    <div class="goal-card">
+                        <div class="goal-icon">⏱️</div>
+                        <div class="goal-title">练习时长</div>
+                        <div class="goal-value"><span id="goal-time">0</span>/45分钟</div>
+                        <div class="goal-progress"><div class="goal-progress-fill" id="progress-time" style="width: 0%"></div></div>
+                    </div>
+                    <div class="goal-card">
+                        <div class="goal-icon">🎵</div>
+                        <div class="goal-title">音准达标</div>
+                        <div class="goal-value"><span id="goal-pitch">0</span>/80分</div>
+                        <div class="goal-progress"><div class="goal-progress-fill" id="progress-pitch" style="width: 0%"></div></div>
+                    </div>
+                    <div class="goal-card">
+                        <div class="goal-icon">📖</div>
+                        <div class="goal-title">完成曲目</div>
+                        <div class="goal-value"><span id="goal-pieces">0</span>/3首</div>
+                        <div class="goal-progress"><div class="goal-progress-fill" id="progress-pieces" style="width: 0%"></div></div>
+                    </div>
+                    <div class="goal-card">
+                        <div class="goal-icon">🔥</div>
+                        <div class="goal-title">连续练习</div>
+                        <div class="goal-value" id="streak-days">12天</div>
+                        <div class="goal-progress"><div class="goal-progress-fill" style="width: 100%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速操作 -->
+            <div class="card">
+                <div class="card-title">⚡ 快速开始</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <a href="/tuner" class="btn btn-secondary" style="text-align: center; text-decoration: none;">
+                        🎵 调音器
+                    </a>
+                    <a href="/practice" class="btn btn-primary" style="text-align: center; text-decoration: none;">
+                        🎯 开始练习
+                    </a>
+                    <a href="/sheets" class="btn btn-success" style="text-align: center; text-decoration: none;">
+                        📚 找琴谱
+                    </a>
+                </div>
+            </div>
+
+            <!-- 推荐练习 -->
+            <div class="card">
+                <div class="card-title">⭐ 为你推荐</div>
+                <div id="recommendations" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div style="background: rgba(243,156,18,0.1); border-radius: 12px; padding: 20px; border: 1px solid rgba(243,156,18,0.3);">
+                        <div style="color: #f39c12; font-size: 0.85rem; margin-bottom: 8px;">建议练习 15分钟</div>
+                        <div style="font-weight: 500; margin-bottom: 8px;">🎵 《小星星变奏曲》- 第2乐段</div>
+                        <div style="color: #888; font-size: 0.85rem;">AI分析：该段落音准85分，但节奏稳定性需加强</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/main.js"></script>
+    <script>
+        const DEFAULT_USER = { id: 1, username: 'cellist', nickname: '大提琴练习者' };
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', async () => {
+            let user = checkLogin();
+            if (!user) {
+                localStorage.setItem('user', JSON.stringify(DEFAULT_USER));
+                user = DEFAULT_USER;
+            }
+            showMainContent(user);
+            await loadDashboard(user.id);
+        });
+
+        function showMainContent(user) {
+            document.getElementById('user-info').style.display = 'block';
+            document.getElementById('user-name').textContent = user.nickname || user.username;
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            location.reload();
+        }
+
+        async function loadDashboard(userId) {
+            try {
+                const stats = await api.getPracticeStats(userId, 30);
+                console.log('练习统计:', stats);
+
+                if (stats.overall) {
+                    const totalMinutes = Math.floor((stats.overall.total_duration || 0) / 60);
+                    document.getElementById('goal-time').textContent = totalMinutes;
+                    document.getElementById('progress-time').style.width = Math.min(100, totalMinutes / 45 * 100) + '%';
+
+                    document.getElementById('goal-pitch').textContent = Math.round(stats.overall.avg_score || 0);
+                    document.getElementById('progress-pitch').style.width = Math.min(100, (stats.overall.avg_score || 0) / 80 * 100) + '%';
+
+                    document.getElementById('goal-pieces').textContent = stats.overall.total_sessions || 0;
+                    document.getElementById('progress-pieces').style.width = Math.min(100, (stats.overall.total_sessions || 0) / 3 * 100) + '%';
+                }
+
+                const hour = new Date().getHours();
+                let greeting = '早上好';
+                if (hour >= 12) greeting = '下午好';
+                if (hour >= 18) greeting = '晚上好';
+
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                document.getElementById('coach-greeting').innerHTML =
+                    `${greeting}，${user.nickname || user.username}！今天是你练习大提琴的第 <strong>${stats.overall?.practice_days || 1}天</strong>。准备好开始今天的练习了吗？`;
+
+            } catch (err) {
+                console.error('加载仪表盘失败:', err);
+            }
+        }
+    </script>
+</body>
+</html>

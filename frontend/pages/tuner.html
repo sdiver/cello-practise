@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调音器 - AI大提琴私教</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .tuner-container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .gauge-container {
+            position: relative;
+            width: 300px;
+            height: 150px;
+            margin: 30px auto;
+        }
+        .tuner-note {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #f39c12;
+            margin: 20px 0;
+        }
+        .tuner-freq {
+            font-size: 1.5rem;
+            color: #888;
+        }
+        .tuner-cents {
+            font-size: 1rem;
+            color: #666;
+            margin-top: 10px;
+        }
+        .string-btns {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .string-btn {
+            width: 80px;
+            height: 100px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .string-btn:hover {
+            border-color: #f39c12;
+            background: rgba(243,156,18,0.1);
+        }
+        .string-btn.active {
+            border-color: #f39c12;
+            background: linear-gradient(135deg, rgba(243,156,18,0.2), rgba(231,76,60,0.2));
+        }
+        .string-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #f39c12;
+        }
+        .string-freq {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+        .instructions {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        .instructions h3 {
+            color: #f39c12;
+            margin-bottom: 15px;
+        }
+        .instructions ul {
+            color: #aaa;
+            line-height: 1.8;
+            margin-left: 20px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #666;
+        }
+        .status-indicator.active {
+            background: #27ae60;
+            box-shadow: 0 0 10px #27ae60;
+        }
+        .status-indicator.tuning {
+            background: #f39c12;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎻 AI大提琴私教</h1>
+            <p class="tagline">像有私教陪练一样，每天都有进步</p>
+            <div id="user-info" style="position: absolute; top: 20px; right: 20px; display: none;">
+                <span id="user-name"></span>
+                <button onclick="logout()" style="margin-left: 10px; padding: 5px 10px; font-size: 0.8rem;">退出</button>
+            </div>
+        </header>
+
+        <nav class="nav-bar">
+            <a href="/" class="nav-btn">📊 今日概览</a>
+            <a href="/tuner" class="nav-btn active">🎵 调音器</a>
+            <a href="/practice" class="nav-btn">🎯 AI陪练</a>
+            <a href="/sheets" class="nav-btn">📚 琴谱库</a>
+            <a href="/progress" class="nav-btn">📈 进步追踪</a>
+            <a href="/qa" class="nav-btn">💬 问AI教练</a>
+        </nav>
+
+        <div class="card">
+            <div class="card-title">
+                🎵 专业调音器
+                <span id="tuner-status" style="font-size: 0.8rem; color: #888; margin-left: auto;">
+                    <span class="status-indicator" id="status-dot"></span>
+                    <span id="status-text">未启动</span>
+                </span>
+            </div>
+
+            <div class="tuner-container">
+                <!-- 仪表盘 -->
+                <div class="gauge-container">
+                    <svg viewBox="0 0 300 150" style="width: 100%; height: 100%;">
+                        <!-- 背景弧 -->
+                        <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="20" stroke-linecap="round"/>
+                        <!-- 绿色区域（音准正确） -->
+                        <path d="M 120 35 A 120 120 0 0 1 180 35" fill="none" stroke="#27ae60" stroke-width="20" stroke-linecap="round"/>
+                        <!-- 黄色区域 -->
+                        <path d="M 75 60 A 120 120 0 0 1 120 35" fill="none" stroke="#f39c12" stroke-width="20" stroke-linecap="round"/>
+                        <path d="M 180 35 A 120 120 0 0 1 225 60" fill="none" stroke="#f39c12" stroke-width="20" stroke-linecap="round"/>
+                        <!-- 红色区域 -->
+                        <path d="M 30 150 A 120 120 0 0 1 75 60" fill="none" stroke="#e74c3c" stroke-width="20" stroke-linecap="round"/>
+                        <path d="M 225 60 A 120 120 0 0 1 270 150" fill="none" stroke="#e74c3c" stroke-width="20" stroke-linecap="round"/>
+                        <!-- 指针 -->
+                        <line id="tuner-needle" x1="150" y1="150" x2="150" y2="40" stroke="#fff" stroke-width="4" stroke-linecap="round" transform="rotate(-90, 150, 150)"/>
+                        <!-- 中心点 -->
+                        <circle cx="150" cy="150" r="10" fill="#f39c12"/>
+                    </svg>
+                </div>
+
+                <!-- 音名和频率 -->
+                <div class="tuner-note" id="tuner-note">--</div>
+                <div class="tuner-freq" id="tuner-freq">0.0 Hz</div>
+                <div class="tuner-cents" id="tuner-cents">偏差: 0 音分</div>
+
+                <!-- 琴弦按钮 -->
+                <div class="string-btns">
+                    <div class="string-btn" onclick="playString(65.41, 'C', this)">
+                        <div class="string-name">C</div>
+                        <div class="string-freq">65.41Hz</div>
+                    </div>
+                    <div class="string-btn" onclick="playString(98.00, 'G', this)">
+                        <div class="string-name">G</div>
+                        <div class="string-freq">98.00Hz</div>
+                    </div>
+                    <div class="string-btn" onclick="playString(146.83, 'D', this)">
+                        <div class="string-name">D</div>
+                        <div class="string-freq">146.83Hz</div>
+                    </div>
+                    <div class="string-btn" onclick="playString(220.00, 'A', this)">
+                        <div class="string-name">A</div>
+                        <div class="string-freq">220.00Hz</div>
+                    </div>
+                </div>
+
+                <!-- 控制按钮 -->
+                <button class="btn btn-primary" id="tuner-toggle-btn" onclick="toggleTuner()" style="font-size: 1.1rem; padding: 15px 40px;">
+                    🎤 开始调音
+                </button>
+
+                <!-- 使用说明 -->
+                <div class="instructions">
+                    <h3>💡 使用说明</h3>
+                    <ul>
+                        <li>点击「开始调音」允许麦克风访问</li>
+                        <li>拨动琴弦，观察指针偏转方向</li>
+                        <li>指针居中且变绿时表示音准正确</li>
+                        <li>点击音名按钮可播放标准音高参考</li>
+                        <li>红色表示音偏低（逆时针），蓝色表示音偏高（顺时针）</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/js/tuner.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = checkLogin();
+            if (user) {
+                showUserInfo(user);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST -F \"file=@/Users/shixiangren/Work/cello-practise/example/perpetual-motion-in-d-major-variation-a.mxl\" http://localhost:3000/api/musicxml/parse | head -c 500)",
+      "Bash(curl -sI \"https://unpkg.com/vexflow/releases/vexflow-min.js\" | head -20)",
+      "Bash(cd /Users/shixiangren/Work/cello-practise/frontend/pages && sed -i '' 's|https://unpkg.com/vexflow/releases/vexflow-min.js|https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js|g' *.html)",
+      "WebFetch(domain:musescore.com)",
+      "WebSearch",
+      "Bash(cd /Users/shixiangren/Work/cello-practise/backend && npm install @tonejs/midi)",
+      "Bash(curl -s -X POST -F \"file=@/Users/shixiangren/Work/cello-practise/example/perpetual-motion-in-d-major-variation-a.mid\" http://localhost:3000/api/midi/parse | head -c 800)",
+      "Bash(curl -s -X POST -F \"file=@/Users/shixiangren/Work/cello-practise/example/perpetual-motion-in-d-major-variation-a.mid\" http://localhost:3000/api/midi/parse | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f\\\\\"标题: {d['title']}\\\\\"\\); print\\(f\\\\\"BPM: {int\\(d['bpm']\\)}\\\\\"\\); print\\(f\\\\\"拍号: {d['time_signature']}\\\\\"\\); print\\(f\\\\\"音符数: {d['note_count']}\\\\\"\\); print\\(f\\\\\"小节数: {d['measure_count']}\\\\\"\\); print\\(f\\\\\"乐器: {', '.join\\([i['name'] for i in d['instruments'][:3]]\\)}\\\\\"\\)\")",
+      "Bash(curl -s \"http://localhost:3000/api/sheets?page=1&limit=10\" | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); sheets=d.get\\('sheets', []\\); print\\('Found sheets:'\\); [print\\(f\\\\\"  ID: {s['id']}, Title: {s['title']}, Path: {s.get\\('local_path', 'N/A'\\)}\\\\\"\\) for s in sheets]\")",
+      "Bash(curl -s -X POST -F \"file=@/Users/shixiangren/Work/cello-practise/example/perpetual-motion-in-d-major-variation-a.mid\" -F \"user_id=1\" -F \"title=Violin Test\" http://localhost:3000/api/midi/upload)",
+      "Bash(curl -s \"http://localhost:3000/api/midi/4/notes\" | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f\\\\\"Title: {d.get\\('title'\\)}\\\\\"\\); print\\(f\\\\\"BPM: {d.get\\('bpm'\\)}\\\\\"\\); print\\(f\\\\\"Notes count: {len\\(d.get\\('notes', []\\)\\)}\\\\\"\\); print\\('First 3 notes:'\\); [print\\(f\\\\\"  {n}\\\\\"\\) for n in d.get\\('notes', []\\)[:3]]\")",
+      "Bash(cd frontend/lib && curl -L -o vexflow.js \"https://unpkg.com/vexflow@4.2.2/build/cjs/vexflow.js\")",
+      "Bash(curl -L -o /Users/shixiangren/Work/cello-practise/frontend/lib/vexflow.js \"https://unpkg.com/vexflow@4.2.2/build/cjs/vexflow.js\")"
+    ]
+  }
+}

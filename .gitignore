@@ -1,0 +1,16 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+.env
+.env.local
+*.log
+.vscode/
+.idea/
+coverage/
+.nyc_output/
+backend/node_modules/
+data/*.db
+uploads/*.mp3
+uploads/*.mid
+uploads/*.xml
+uploads/*.pdf

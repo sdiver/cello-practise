@@ -1,8 +1,8 @@
 # 使用官方 Node.js 轻量级镜像
 FROM node:18-alpine
 
-# 安装 wget 用于健康检查
-RUN apk add --no-cache wget
+# 安装系统依赖：wget 用于健康检查，python3/make/g++ 用于编译原生模块
+RUN apk add --no-cache wget python3 make g++
 
 # 设置工作目录
 WORKDIR /app/backend

@@ -100,51 +100,66 @@ function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
   }
 }
 
+// 获取代理路径（从请求头或配置）
+function getProxyPath(req) {
+  // 优先从 portal 传递的请求头获取
+  const headerPath = req.headers['x-proxy-path'];
+  if (headerPath) return headerPath;
+  // 否则使用配置的代理路径（取第一个）
+  return commonProxyPaths[0] || '';
+}
+
 // 页面路由
 const mountPageRoutes = (prefix = '') => {
   app.get(`${prefix}/`, (req, res) => {
-    if (prefix) {
-      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/index.html'), prefix);
+    const proxyPath = getProxyPath(req);
+    if (proxyPath) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/index.html'), proxyPath);
     } else {
       res.sendFile(path.join(__dirname, '../frontend/pages/index.html'));
     }
   });
 
   app.get(`${prefix}/tuner`, (req, res) => {
-    if (prefix) {
-      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/tuner.html'), prefix);
+    const proxyPath = getProxyPath(req);
+    if (proxyPath) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/tuner.html'), proxyPath);
     } else {
       res.sendFile(path.join(__dirname, '../frontend/pages/tuner.html'));
     }
   });
 
   app.get(`${prefix}/practice`, (req, res) => {
-    if (prefix) {
-      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/practice.html'), prefix);
+    const proxyPath = getProxyPath(req);
+    if (proxyPath) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/practice.html'), proxyPath);
     } else {
       res.sendFile(path.join(__dirname, '../frontend/pages/practice.html'));
     }
   });
 
   app.get(`${prefix}/sheets`, (req, res) => {
-    if (prefix) {
-      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/sheets.html'), prefix);
+    const proxyPath = getProxyPath(req);
+    if (proxyPath) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/sheets.html'), proxyPath);
     } else {
       res.sendFile(path.join(__dirname, '../frontend/pages/sheets.html'));
     }
   });
 
   app.get(`${prefix}/progress`, (req, res) => {
-    if (prefix) {
-      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/progress.html'), prefix);
+    const proxyPath = getProxyPath(req);
+    if (proxyPath) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/progress.html'), proxyPath);
     } else {
       res.sendFile(path.join(__dirname, '../frontend/pages/progress.html'));
     }
   });
 
   app.get(`${prefix}/qa`, (req, res) => {
-    if (prefix) {
-      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/qa.html'), prefix);
+    const proxyPath = getProxyPath(req);
+    if (proxyPath) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/qa.html'), proxyPath);
     } else {
       res.sendFile(path.join(__dirname, '../frontend/pages/qa.html'));
     }

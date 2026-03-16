@@ -51,6 +51,12 @@ commonProxyPaths.forEach(proxyPath => {
   app.use(`${proxyPath}/pages`, express.static(path.join(__dirname, '../frontend/pages')));
 });
 
+// 请求日志中间件（在限流之前，记录所有请求）
+app.use('/api/', (req, res, next) => {
+  console.log(`[Request] ${req.method} ${req.url} - Content-Type: ${req.headers['content-type'] || 'none'}`);
+  next();
+});
+
 // 限流
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -67,8 +73,10 @@ const urlencodedParser = express.urlencoded({ extended: true, limit: '10mb' });
 const conditionalBodyParser = (req, res, next) => {
   const contentType = req.headers['content-type'] || '';
   if (contentType.includes('multipart/form-data')) {
+    console.log('[BodyParser] 跳过 multipart 请求:', req.method, req.url);
     return next();
   }
+  console.log('[BodyParser] 解析 JSON 请求:', req.method, req.url, contentType);
   jsonParser(req, res, (err) => {
     if (err) return next(err);
     urlencodedParser(req, res, next);

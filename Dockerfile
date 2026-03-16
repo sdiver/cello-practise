@@ -1,8 +1,8 @@
 # 使用官方 Node.js 轻量级镜像 (Node 20 LTS)
 FROM node:20-alpine
 
-# 安装系统依赖：wget 用于健康检查，python3/make/g++ 用于编译原生模块
-RUN apk add --no-cache wget python3 make g++
+# 安装系统依赖：wget 用于健康检查，python3/make/g++/py3-setuptools 用于编译原生模块
+RUN apk add --no-cache wget python3 make g++ py3-setuptools
 
 # 设置工作目录
 WORKDIR /app/backend

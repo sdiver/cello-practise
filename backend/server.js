@@ -223,9 +223,14 @@ app.use((req, res) => {
 db.init()
   .then(() => {
     console.log('数据库初始化成功');
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`服务器运行在 http://localhost:${PORT}`);
     });
+
+    // 增加超时设置，防止代理连接被意外断开
+    server.keepAliveTimeout = 65000; // 超过代理的 60 秒超时
+    server.headersTimeout = 66000;
+    server.requestTimeout = 300000; // 5分钟，支持大文件上传
   })
   .catch(err => {
     console.error('数据库初始化失败:', err);

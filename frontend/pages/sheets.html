@@ -278,6 +278,11 @@
     <script src="/js/api.js"></script>
     <script src="/js/main.js"></script>
     <script>
+        // 自动检测代理路径
+        const pathParts = window.location.pathname.split('/');
+        const appIndex = pathParts.indexOf('app');
+        const BASE_PATH = appIndex >= 0 ? '/' + pathParts.slice(1, appIndex + 2).join('/') : '';
+
         let currentTab = 'local';
         let currentPage = 1;
         const userId = getCurrentUserId();
@@ -335,7 +340,7 @@
                 const parseFormData = new FormData();
                 parseFormData.append('file', file);
 
-                const parseResponse = await fetch('/api/musicxml/parse', {
+                const parseResponse = await fetch(`${BASE_PATH}/api/musicxml/parse`, {
                     method: 'POST',
                     body: parseFormData
                 });
@@ -456,7 +461,7 @@
                 if (title) formData.append('title', title);
                 if (composer) formData.append('composer', composer);
 
-                const response = await fetch('/api/musicxml/upload', {
+                const response = await fetch(`${BASE_PATH}/api/musicxml/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -515,7 +520,7 @@
                 const parseFormData = new FormData();
                 parseFormData.append('file', file);
 
-                const parseResponse = await fetch('/api/midi/parse', {
+                const parseResponse = await fetch(`${BASE_PATH}/api/midi/parse`, {
                     method: 'POST',
                     body: parseFormData
                 });
@@ -641,7 +646,7 @@
                 if (title) formData.append('title', title);
                 if (composer) formData.append('composer', composer);
 
-                const response = await fetch('/api/midi/upload', {
+                const response = await fetch(`${BASE_PATH}/api/midi/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -746,7 +751,7 @@
             showLoading(previewContainer, '正在解析琴谱信息...');
 
             try {
-                const response = await fetch('/api/musescore/parse', {
+                const response = await fetch(`${BASE_PATH}/api/musescore/parse`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
@@ -804,7 +809,7 @@
             }
 
             try {
-                const response = await fetch('/api/musescore/save', {
+                const response = await fetch(`${BASE_PATH}/api/musescore/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url, user_id: userId })
@@ -859,7 +864,7 @@
             }
 
             try {
-                const response = await fetch('/api/sheets/save', {
+                const response = await fetch(`${BASE_PATH}/api/sheets/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

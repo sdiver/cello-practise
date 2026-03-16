@@ -31,8 +31,8 @@ app.use(helmet({
 
 app.use(cors());
 app.use(morgan('dev'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// 注意：body parser 必须在文件上传路由之后挂载，否则会消耗请求流
+// 先挂载静态文件和 API 路由，最后在具体路由中处理 body parsing
 
 // 支持代理路径前缀
 const commonProxyPaths = process.env.PROXY_PATHS ? process.env.PROXY_PATHS.split(',') : [];
@@ -59,8 +59,27 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Body parser 中间件（跳过 multipart 请求）
+const jsonParser = express.json({ limit: '10mb' });
+const urlencodedParser = express.urlencoded({ extended: true, limit: '10mb' });
+
+// 条件 body parser - 跳过 multipart 请求
+const conditionalBodyParser = (req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return next();
+  }
+  jsonParser(req, res, (err) => {
+    if (err) return next(err);
+    urlencodedParser(req, res, next);
+  });
+};
+
 // API 路由
 const mountApiRoutes = (prefix = '') => {
+  // 先应用条件 body parser
+  app.use(`${prefix}/api`, conditionalBodyParser);
+  // 再挂载路由
   app.use(`${prefix}/api/sheets`, sheetRoutes);
   app.use(`${prefix}/api/practice`, practiceRoutes);
   app.use(`${prefix}/api/ai`, aiRoutes);

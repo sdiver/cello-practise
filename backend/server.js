@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const db = require('./models/db');
@@ -33,6 +34,9 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// 支持代理路径前缀
+const commonProxyPaths = process.env.PROXY_PATHS ? process.env.PROXY_PATHS.split(',') : [];
+
 // 静态文件
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -50,9 +54,6 @@ const limiter = rateLimit({
   message: { error: '请求过于频繁，请稍后再试' }
 });
 app.use('/api/', limiter);
-
-// 支持代理路径前缀
-const commonProxyPaths = process.env.PROXY_PATHS ? process.env.PROXY_PATHS.split(',') : [];
 
 // API 路由
 const mountApiRoutes = (prefix = '') => {
@@ -74,30 +75,73 @@ commonProxyPaths.forEach(proxyPath => {
   mountApiRoutes(proxyPath);
 });
 
+// 辅助函数：读取并修复 HTML 中的绝对路径
+function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
+  try {
+    let html = fs.readFileSync(htmlPath, 'utf8');
+    if (basePath && basePath !== '') {
+      // 为代理路径下的请求替换绝对路径
+      // 将 href="/xxx" 替换为 href="./xxx"
+      // 将 src="/xxx" 替换为 src="./xxx"
+      html = html.replace(/href="\/([^"]+)"/g, 'href="./$1"');
+      html = html.replace(/src="\/([^"]+)"/g, 'src="./$1"');
+    }
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (err) {
+    console.error('读取 HTML 失败:', err);
+    res.status(500).send('服务器错误');
+  }
+}
+
 // 页面路由
 const mountPageRoutes = (prefix = '') => {
   app.get(`${prefix}/`, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/index.html'));
+    if (prefix) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/index.html'), prefix);
+    } else {
+      res.sendFile(path.join(__dirname, '../frontend/pages/index.html'));
+    }
   });
 
   app.get(`${prefix}/tuner`, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/tuner.html'));
+    if (prefix) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/tuner.html'), prefix);
+    } else {
+      res.sendFile(path.join(__dirname, '../frontend/pages/tuner.html'));
+    }
   });
 
   app.get(`${prefix}/practice`, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/practice.html'));
+    if (prefix) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/practice.html'), prefix);
+    } else {
+      res.sendFile(path.join(__dirname, '../frontend/pages/practice.html'));
+    }
   });
 
   app.get(`${prefix}/sheets`, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/sheets.html'));
+    if (prefix) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/sheets.html'), prefix);
+    } else {
+      res.sendFile(path.join(__dirname, '../frontend/pages/sheets.html'));
+    }
   });
 
   app.get(`${prefix}/progress`, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/progress.html'));
+    if (prefix) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/progress.html'), prefix);
+    } else {
+      res.sendFile(path.join(__dirname, '../frontend/pages/progress.html'));
+    }
   });
 
   app.get(`${prefix}/qa`, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/qa.html'));
+    if (prefix) {
+      serveHtmlWithFixedPaths(res, path.join(__dirname, '../frontend/pages/qa.html'), prefix);
+    } else {
+      res.sendFile(path.join(__dirname, '../frontend/pages/qa.html'));
+    }
   });
 };
 

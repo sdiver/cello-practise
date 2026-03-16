@@ -79,6 +79,7 @@ commonProxyPaths.forEach(proxyPath => {
 function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
   try {
     let html = fs.readFileSync(htmlPath, 'utf8');
+    console.log(`[DEBUG] 处理 HTML: ${htmlPath}, basePath: ${basePath}`);
     if (basePath && basePath !== '') {
       // 1. 将绝对路径 "/xxx" 替换为相对路径 "./xxx"
       html = html.replace(/href="\/([^"]+)"/g, 'href="./$1"');
@@ -87,6 +88,8 @@ function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
       // 2. 将 "../xxx" 替换为 "./xxx"（因为页面在代理路径根目录，不需要返回上级）
       html = html.replace(/href="\.\.\/([^"]+)"/g, 'href="./$1"');
       html = html.replace(/src="\.\.\/([^"]+)"/g, 'src="./$1"');
+
+      console.log(`[DEBUG] 已替换路径`);
     }
     res.setHeader('Content-Type', 'text/html');
     res.send(html);

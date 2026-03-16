@@ -18,6 +18,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - PROXY_PATHS=/app/cello-practise,/portal-home/app/cello-practise
     networks:
       - cello-network
 

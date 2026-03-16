@@ -37,6 +37,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+// 代理路径下的静态文件
+commonProxyPaths.forEach(proxyPath => {
+  app.use(`${proxyPath}/uploads`, express.static(path.join(__dirname, '../uploads')));
+  app.use(`${proxyPath}`, express.static(path.join(__dirname, '../frontend')));
+});
+
 // 限流
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -45,49 +51,74 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// 支持代理路径前缀
+const commonProxyPaths = process.env.PROXY_PATHS ? process.env.PROXY_PATHS.split(',') : [];
+
 // API 路由
-app.use('/api/sheets', sheetRoutes);
-app.use('/api/practice', practiceRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/musescore', musescoreRoutes);
-app.use('/api/musicxml', musicxmlRoutes);
-app.use('/api/midi', midiRoutes);
+const mountApiRoutes = (prefix = '') => {
+  app.use(`${prefix}/api/sheets`, sheetRoutes);
+  app.use(`${prefix}/api/practice`, practiceRoutes);
+  app.use(`${prefix}/api/ai`, aiRoutes);
+  app.use(`${prefix}/api/search`, searchRoutes);
+  app.use(`${prefix}/api/users`, userRoutes);
+  app.use(`${prefix}/api/musescore`, musescoreRoutes);
+  app.use(`${prefix}/api/musicxml`, musicxmlRoutes);
+  app.use(`${prefix}/api/midi`, midiRoutes);
+};
+
+// 挂载到根路径
+mountApiRoutes();
+
+// 挂载到代理路径
+commonProxyPaths.forEach(proxyPath => {
+  mountApiRoutes(proxyPath);
+});
 
 // 页面路由
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/pages/index.html'));
-});
+const mountPageRoutes = (prefix = '') => {
+  app.get(`${prefix}/`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/index.html'));
+  });
 
-app.get('/tuner', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/pages/tuner.html'));
-});
+  app.get(`${prefix}/tuner`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/tuner.html'));
+  });
 
-app.get('/practice', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/pages/practice.html'));
-});
+  app.get(`${prefix}/practice`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/practice.html'));
+  });
 
-app.get('/sheets', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/pages/sheets.html'));
-});
+  app.get(`${prefix}/sheets`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/sheets.html'));
+  });
 
-app.get('/progress', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/pages/progress.html'));
-});
+  app.get(`${prefix}/progress`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/progress.html'));
+  });
 
-app.get('/qa', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/pages/qa.html'));
-});
+  app.get(`${prefix}/qa`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/qa.html'));
+  });
+};
+
+// 挂载到根路径
+mountPageRoutes();
+
+// 挂载到代理路径
+commonProxyPaths.forEach(proxyPath => mountPageRoutes(proxyPath));
 
 // 健康检查
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
+const mountHealthCheck = (prefix = '') => {
+  app.get(`${prefix}/api/health`, (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0'
+    });
   });
-});
+};
+mountHealthCheck();
+commonProxyPaths.forEach(proxyPath => mountHealthCheck(proxyPath));
 
 // 错误处理
 app.use((err, req, res, next) => {

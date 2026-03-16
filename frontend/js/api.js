@@ -1,5 +1,8 @@
-// API 基础配置
-const API_BASE = '';
+// API 基础配置 - 自动检测代理路径
+const pathParts = window.location.pathname.split('/');
+const appIndex = pathParts.indexOf('app');
+const BASE_PATH = appIndex >= 0 ? '/' + pathParts.slice(1, appIndex + 2).join('/') : '';
+const API_BASE = BASE_PATH;
 
 // 通用请求函数
 async function request(url, options = {}) {

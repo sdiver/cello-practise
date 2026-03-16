@@ -84,13 +84,14 @@ function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
   try {
     let html = fs.readFileSync(htmlPath, 'utf8');
     if (basePath && basePath !== '') {
-      // 1. 将绝对路径 "/xxx" 替换为相对路径 "./xxx"
-      html = html.replace(/href="\/([^"]+)"/g, 'href="./$1"');
-      html = html.replace(/src="\/([^"]+)"/g, 'src="./$1"');
+      // 使用完整代理路径替换，避免相对路径问题
+      // 1. 将绝对路径 "/xxx" 替换为 "<basePath>/xxx"
+      html = html.replace(/href="\/([^"]+)"/g, `href="${basePath}/$1"`);
+      html = html.replace(/src="\/([^"]+)"/g, `src="${basePath}/$1"`);
 
-      // 2. 将 "../xxx" 替换为 "./xxx"（因为页面在代理路径根目录，不需要返回上级）
-      html = html.replace(/href="\.\.\/([^"]+)"/g, 'href="./$1"');
-      html = html.replace(/src="\.\.\/([^"]+)"/g, 'src="./$1"');
+      // 2. 将 "../xxx" 替换为 "<basePath>/xxx"
+      html = html.replace(/href="\.\.\/([^"]+)"/g, `href="${basePath}/$1"`);
+      html = html.replace(/src="\.\.\/([^"]+)"/g, `src="${basePath}/$1"`);
     }
     res.setHeader('Content-Type', 'text/html');
     res.send(html);

@@ -37,14 +37,18 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // 支持代理路径前缀
 const commonProxyPaths = process.env.PROXY_PATHS ? process.env.PROXY_PATHS.split(',') : [];
 
-// 静态文件
+// 静态文件 - 根路径
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// 代理路径下的静态文件
+// 代理路径下的静态文件（只处理非HTML资源，HTML由路由处理）
 commonProxyPaths.forEach(proxyPath => {
   app.use(`${proxyPath}/uploads`, express.static(path.join(__dirname, '../uploads')));
-  app.use(`${proxyPath}`, express.static(path.join(__dirname, '../frontend')));
+  // 只为css/js/lib等静态资源提供代理路径服务，不处理HTML
+  app.use(`${proxyPath}/css`, express.static(path.join(__dirname, '../frontend/css')));
+  app.use(`${proxyPath}/js`, express.static(path.join(__dirname, '../frontend/js')));
+  app.use(`${proxyPath}/lib`, express.static(path.join(__dirname, '../frontend/lib')));
+  app.use(`${proxyPath}/pages`, express.static(path.join(__dirname, '../frontend/pages')));
 });
 
 // 限流
@@ -79,7 +83,6 @@ commonProxyPaths.forEach(proxyPath => {
 function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
   try {
     let html = fs.readFileSync(htmlPath, 'utf8');
-    console.log(`[DEBUG] 处理 HTML: ${htmlPath}, basePath: ${basePath}`);
     if (basePath && basePath !== '') {
       // 1. 将绝对路径 "/xxx" 替换为相对路径 "./xxx"
       html = html.replace(/href="\/([^"]+)"/g, 'href="./$1"');
@@ -88,8 +91,6 @@ function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
       // 2. 将 "../xxx" 替换为 "./xxx"（因为页面在代理路径根目录，不需要返回上级）
       html = html.replace(/href="\.\.\/([^"]+)"/g, 'href="./$1"');
       html = html.replace(/src="\.\.\/([^"]+)"/g, 'src="./$1"');
-
-      console.log(`[DEBUG] 已替换路径`);
     }
     res.setHeader('Content-Type', 'text/html');
     res.send(html);

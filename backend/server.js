@@ -75,16 +75,18 @@ commonProxyPaths.forEach(proxyPath => {
   mountApiRoutes(proxyPath);
 });
 
-// 辅助函数：读取并修复 HTML 中的绝对路径
+// 辅助函数：读取并修复 HTML 中的路径
 function serveHtmlWithFixedPaths(res, htmlPath, basePath) {
   try {
     let html = fs.readFileSync(htmlPath, 'utf8');
     if (basePath && basePath !== '') {
-      // 为代理路径下的请求替换绝对路径
-      // 将 href="/xxx" 替换为 href="./xxx"
-      // 将 src="/xxx" 替换为 src="./xxx"
+      // 1. 将绝对路径 "/xxx" 替换为相对路径 "./xxx"
       html = html.replace(/href="\/([^"]+)"/g, 'href="./$1"');
       html = html.replace(/src="\/([^"]+)"/g, 'src="./$1"');
+
+      // 2. 将 "../xxx" 替换为 "./xxx"（因为页面在代理路径根目录，不需要返回上级）
+      html = html.replace(/href="\.\.\/([^"]+)"/g, 'href="./$1"');
+      html = html.replace(/src="\.\.\/([^"]+)"/g, 'src="./$1"');
     }
     res.setHeader('Content-Type', 'text/html');
     res.send(html);

@@ -278,25 +278,12 @@
     <script src="/js/api.js"></script>
     <script src="/js/main.js"></script>
     <script>
-        // 自动检测代理路径
-        const pathParts = window.location.pathname.split('/');
-        const appIndex = pathParts.indexOf('app');
-        const BASE_PATH = appIndex >= 0 ? '/' + pathParts.slice(1, appIndex + 2).join('/') : '';
-
+        // BASE_PATH 已在 api.js 中定义，这里直接使用
         let currentTab = 'local';
         let currentPage = 1;
         const userId = getCurrentUserId();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const user = checkLogin();
-            if (user) {
-                showUserInfo(user);
-                loadLocalSheets();
-            } else {
-                showError('local-sheets', '请先登录');
-            }
-        });
-
+        // 必须在 DOMContentLoaded 之前定义，供 onclick 使用
         function switchTab(tab) {
             currentTab = tab;
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -312,6 +299,16 @@
             if (tab === 'local') loadLocalSheets();
             if (tab === 'favorites') loadFavorites();
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = checkLogin();
+            if (user) {
+                showUserInfo(user);
+                loadLocalSheets();
+            } else {
+                showError('local-sheets', '请先登录');
+            }
+        });
 
         // 处理 MusicXML 文件上传
         async function handleFileUpload(file) {

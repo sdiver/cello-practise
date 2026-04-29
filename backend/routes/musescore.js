@@ -1,56 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../models/db');
-const { downloadMidi, parseMidiFile, listMidiFiles } = require('../services/musescore-dl');
-
-/**
- * POST /api/musescore/download
- * 通过 dl-librescore 下载 MuseScore MIDI
- */
-router.post('/download', async (req, res) => {
-  try {
-    const { url } = req.body;
-
-    if (!url || !url.includes('musescore.com')) {
-      return res.status(400).json({ error: '请输入有效的 MuseScore 链接' });
-    }
-
-    console.log('下载 MuseScore MIDI:', url);
-
-    const result = await downloadMidi(url);
-    console.log('下载成功:', result.filename);
-
-    // 解析 MIDI 音符
-    const midiData = parseMidiFile(result.filepath);
-
-    // 保存到数据库
-    const dbResult = await db.run(
-      `INSERT INTO sheets (title, composer, difficulty, source, source_url, local_path, file_type, is_downloaded, user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-      [midiData.name, 'MuseScore', 'intermediate', 'musescore', url,
-       result.filename, 'midi', req.body.user_id || 1]
-    );
-
-    res.json({
-      id: dbResult.id,
-      filename: result.filename,
-      name: midiData.name,
-      bpm: midiData.bpm,
-      noteCount: midiData.noteCount,
-      duration: midiData.duration,
-      notes: midiData.notes,
-      message: '下载成功'
-    });
-
-  } catch (err) {
-    console.error('MuseScore 下载失败:', err);
-    res.status(500).json({ error: err.message || '下载失败' });
-  }
-});
+const { parseMidiFile, listMidiFiles } = require('../services/musescore-dl');
 
 /**
  * GET /api/musescore/midi
- * 列出已下载的 MIDI 文件
+ * 列出本地 MIDI 文件（含数据库联查的真实 title）
  */
 router.get('/midi', async (req, res) => {
   try {

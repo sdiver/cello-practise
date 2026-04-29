@@ -72,9 +72,7 @@ export const api = {
   generatePlan: (data: any) =>
     http.post('/ai/plan', data, { timeout: 60000 }).then(r => r.data),
 
-  // MuseScore MIDI 下载
-  downloadMuseScoreMidi: (url: string, userId = 1) =>
-    http.post('/musescore/download', { url, user_id: userId }, { timeout: 120000 }).then(r => r.data),
+  // 本地 MIDI 文件列举与解析
   listMidiFiles: () =>
     http.get('/musescore/midi').then(r => r.data),
   getMidiNotes: (filename: string) =>

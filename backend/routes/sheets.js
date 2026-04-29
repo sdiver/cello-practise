@@ -24,7 +24,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.mp3', '.wav', '.midi', '.mid'];
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.mp3', '.wav', '.midi', '.mid', '.xml', '.musicxml', '.mxl'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
@@ -131,18 +131,65 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '请选择要上传的文件' });
     }
 
-    const { title, composer, difficulty, source } = req.body;
+    const { composer, difficulty, source } = req.body;
+    // multer 默认按 latin1 解码原文件名，需修正为 utf8 防止中文乱码
+    const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+    const ext = path.extname(originalName).toLowerCase();
+    const baseName = path.basename(originalName, path.extname(originalName));
+
+    // 文件分类
+    const isMidi = ext === '.mid' || ext === '.midi';
+    const isXml = ext === '.xml' || ext === '.musicxml' || ext === '.mxl';
+
+    const midiPath = isMidi ? req.file.filename : null;
+    const xmlPath = isXml ? req.file.filename : null;
+    const localPath = (isMidi || isXml) ? null : req.file.filename;
+
+    // 若为 MusicXML，尝试提取标题/作曲家/乐器等元数据
+    let parsedMeta = null;
+    if (isXml) {
+      try {
+        const { parseMusicXML } = require('../services/musicxml');
+        parsedMeta = parseMusicXML(req.file.path);
+      } catch (e) {
+        console.warn('[sheets/upload] MusicXML 解析失败:', e.message);
+      }
+    }
+
+    // title 优先级：用户填 > XML 解析 > 文件名
+    const title =
+      (req.body.title && req.body.title.trim()) ||
+      (parsedMeta?.title) ||
+      baseName;
+
+    const finalComposer = composer || parsedMeta?.composer || null;
 
     const result = await db.run(
-      `INSERT INTO sheets (title, composer, difficulty, source, local_path, file_type, file_size, is_downloaded, user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-      [title, composer, difficulty, source || 'local', req.file.filename, req.file.mimetype, req.file.size, req.body.user_id || null]
+      `INSERT INTO sheets (title, composer, difficulty, source, local_path, midi_path, xml_path, file_type, file_size, metadata, is_downloaded, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [
+        title,
+        finalComposer,
+        difficulty || null,
+        source || 'local',
+        localPath,
+        midiPath,
+        xmlPath,
+        req.file.mimetype,
+        req.file.size,
+        parsedMeta ? JSON.stringify(parsedMeta) : null,
+        req.body.user_id || null,
+      ]
     );
 
     res.json({
       id: result.id,
       message: '上传成功',
-      file: req.file.filename
+      file: req.file.filename,
+      title,
+      is_midi: isMidi,
+      is_xml: isXml,
+      meta: parsedMeta,
     });
   } catch (err) {
     console.error('上传琴谱失败:', err);
@@ -174,15 +221,24 @@ router.post('/save', async (req, res) => {
   }
 });
 
-// 删除琴谱
+// 删除琴谱（同时清理 local/midi/xml 三处文件）
 router.delete('/:id', async (req, res) => {
   try {
-    const sheet = await db.get('SELECT local_path FROM sheets WHERE id = ?', [req.params.id]);
+    const sheet = await db.get(
+      'SELECT local_path, midi_path, xml_path FROM sheets WHERE id = ?',
+      [req.params.id]
+    );
 
-    if (sheet && sheet.local_path) {
-      const filePath = path.join(__dirname, '../../uploads/sheets', sheet.local_path);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+    if (sheet) {
+      const dir = path.join(__dirname, '../../uploads/sheets');
+      for (const fname of [sheet.local_path, sheet.midi_path, sheet.xml_path]) {
+        if (!fname) continue;
+        const filePath = path.join(dir, fname);
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (e) {
+          console.warn('删除文件失败（继续）:', filePath, e.message);
+        }
       }
     }
 

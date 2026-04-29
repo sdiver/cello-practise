@@ -169,11 +169,13 @@ router.get('/:id/render', async (req, res) => {
       return res.status(404).json({ error: '琴谱不存在' });
     }
 
-    if (!sheet.local_path || !isValidMusicXML(sheet.local_path)) {
+    // 优先用 xml_path，回退到 local_path（兼容旧上传）
+    const fileRef = sheet.xml_path || sheet.local_path;
+    if (!fileRef || !isValidMusicXML(fileRef)) {
       return res.status(400).json({ error: '不是有效的 MusicXML 文件' });
     }
 
-    const filePath = path.join(__dirname, '../../uploads/sheets', sheet.local_path);
+    const filePath = path.join(__dirname, '../../uploads/sheets', fileRef);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: '文件不存在' });

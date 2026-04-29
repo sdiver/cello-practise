@@ -1,16 +1,55 @@
+# Node / 编辑器 / OS
 node_modules/
+**/node_modules/
 npm-debug.log*
 .DS_Store
-.env
-.env.local
 *.log
 .vscode/
 .idea/
+.claude/settings.local.json
+.playwright-mcp/
 coverage/
 .nyc_output/
-backend/node_modules/
+
+# 环境变量
+.env
+.env.local
+**/.env
+
+# 数据库与上传文件（用户运行时数据）
 data/*.db
-uploads/*.mp3
-uploads/*.mid
-uploads/*.xml
-uploads/*.pdf
+data/*.db-*
+uploads/**/*.mp3
+uploads/**/*.mid
+uploads/**/*.midi
+uploads/**/*.xml
+uploads/**/*.musicxml
+uploads/**/*.mxl
+uploads/**/*.pdf
+uploads/**/*.png
+uploads/**/*.jpg
+
+# 前端构建产物
+frontend/dist/
+
+# 旧版备份（不入版本库）
+frontend_old/
+
+# 工作笔记 / 历史截图（本地保留）
+task_plan.md
+findings.md
+progress.md
+chat.png
+home-beautiful.png
+home-final.png
+homepage.png
+practice-final.png
+practice-follow.png
+practice-notes.png
+practice-twinkle.png
+sheets-final.png
+sheets-fixed.png
+tuner.png
+
+# 根目录遗留的旧 HTML
+/index.html

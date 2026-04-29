@@ -53,6 +53,8 @@ function init() {
         source TEXT,
         source_url TEXT,
         local_path TEXT,
+        midi_path TEXT,
+        xml_path TEXT,
         file_type TEXT,
         file_size INTEGER,
         is_downloaded BOOLEAN DEFAULT 0,
@@ -157,6 +159,9 @@ function init() {
           completed++;
           if (completed === tables.length) {
             console.log('所有表创建成功');
+            // 兼容旧库：补加 midi_path / xml_path 字段（已存在则忽略错误）
+            database.run(`ALTER TABLE sheets ADD COLUMN midi_path TEXT`, () => {});
+            database.run(`ALTER TABLE sheets ADD COLUMN xml_path TEXT`, () => {});
             // 创建默认用户
             createDefaultUser().then(() => resolve()).catch(reject);
           }

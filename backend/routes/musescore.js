@@ -1,198 +1,107 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../models/db');
-const { parseMuseScoreUrl, getRecommendedCelloSheets, isValidMuseScoreUrl } = require('../services/musescore');
+const { downloadMidi, parseMidiFile, listMidiFiles } = require('../services/musescore-dl');
 
 /**
- * POST /api/musescore/parse
- * 解析 MuseScore 链接
+ * POST /api/musescore/download
+ * 通过 dl-librescore 下载 MuseScore MIDI
  */
-router.post('/parse', async (req, res) => {
+router.post('/download', async (req, res) => {
   try {
     const { url } = req.body;
 
-    if (!url || !isValidMuseScoreUrl(url)) {
+    if (!url || !url.includes('musescore.com')) {
       return res.status(400).json({ error: '请输入有效的 MuseScore 链接' });
     }
 
-    console.log('解析 MuseScore URL:', url);
+    console.log('下载 MuseScore MIDI:', url);
 
-    // 爬取琴谱信息
-    const sheetInfo = await parseMuseScoreUrl(url);
+    const result = await downloadMidi(url);
+    console.log('下载成功:', result.filename);
 
-    // 检查是否已存在
-    const existing = await db.get(
-      'SELECT id FROM sheets WHERE source_url = ?',
-      [url]
-    );
-
-    res.json({
-      ...sheetInfo,
-      exists: !!existing,
-      existing_id: existing?.id
-    });
-
-  } catch (err) {
-    console.error('解析 MuseScore 链接失败:', err);
-    res.status(500).json({
-      error: '解析失败',
-      message: err.message,
-      tip: '请确保链接是公开可访问的 MuseScore 琴谱页面'
-    });
-  }
-});
-
-/**
- * POST /api/musescore/save
- * 保存 MuseScore 琴谱到本地
- */
-router.post('/save', async (req, res) => {
-  try {
-    const { url, user_id } = req.body;
-
-    if (!url || !isValidMuseScoreUrl(url)) {
-      return res.status(400).json({ error: '无效的链接' });
-    }
-
-    // 检查是否已存在
-    const existing = await db.get(
-      'SELECT id FROM sheets WHERE source_url = ?',
-      [url]
-    );
-
-    if (existing) {
-      return res.json({
-        id: existing.id,
-        message: '琴谱已存在',
-        exists: true
-      });
-    }
-
-    // 爬取琴谱信息
-    const sheetInfo = await parseMuseScoreUrl(url);
+    // 解析 MIDI 音符
+    const midiData = parseMidiFile(result.filepath);
 
     // 保存到数据库
-    const result = await db.run(
-      `INSERT INTO sheets
-       (title, composer, difficulty, source, source_url, thumbnail, metadata, is_downloaded, user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        sheetInfo.title,
-        sheetInfo.composer,
-        sheetInfo.difficulty,
-        'MuseScore',
-        url,
-        sheetInfo.thumbnail,
-        JSON.stringify(sheetInfo.metadata),
-        0,
-        user_id || null
-      ]
+    const dbResult = await db.run(
+      `INSERT INTO sheets (title, composer, difficulty, source, source_url, local_path, file_type, is_downloaded, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [midiData.name, 'MuseScore', 'intermediate', 'musescore', url,
+       result.filename, 'midi', req.body.user_id || 1]
     );
 
     res.json({
-      id: result.id,
-      message: '保存成功',
-      sheet: sheetInfo
+      id: dbResult.id,
+      filename: result.filename,
+      name: midiData.name,
+      bpm: midiData.bpm,
+      noteCount: midiData.noteCount,
+      duration: midiData.duration,
+      notes: midiData.notes,
+      message: '下载成功'
     });
 
   } catch (err) {
-    console.error('保存 MuseScore 琴谱失败:', err);
-    res.status(500).json({
-      error: '保存失败',
-      message: err.message
-    });
+    console.error('MuseScore 下载失败:', err);
+    res.status(500).json({ error: err.message || '下载失败' });
   }
 });
 
 /**
- * GET /api/musescore/recommendations
- * 获取推荐的大提琴琴谱
+ * GET /api/musescore/midi
+ * 列出已下载的 MIDI 文件
  */
-router.get('/recommendations', async (req, res) => {
+router.get('/midi', async (req, res) => {
   try {
-    const { limit = 5 } = req.query;
+    const files = listMidiFiles();
 
-    console.log('获取 MuseScore 推荐琴谱...');
-
-    const recommendations = await getRecommendedCelloSheets(parseInt(limit));
-
-    res.json({
-      count: recommendations.length,
-      data: recommendations
-    });
-
-  } catch (err) {
-    console.error('获取推荐失败:', err);
-    res.status(500).json({
-      error: '获取推荐失败',
-      message: err.message
-    });
-  }
-});
-
-/**
- * POST /api/musescore/batch-save
- * 批量保存推荐琴谱
- */
-router.post('/batch-save', async (req, res) => {
-  try {
-    const { user_id } = req.body;
-
-    // 获取推荐
-    const recommendations = await getRecommendedCelloSheets(5);
-    const saved = [];
-    const skipped = [];
-
-    for (const sheet of recommendations) {
-      try {
-        // 检查是否已存在
-        const existing = await db.get(
-          'SELECT id FROM sheets WHERE source_url = ?',
-          [sheet.source_url]
-        );
-
-        if (existing) {
-          skipped.push(sheet.title);
-          continue;
-        }
-
-        // 保存
-        const result = await db.run(
-          `INSERT INTO sheets
-           (title, composer, difficulty, source, source_url, thumbnail, metadata, is_downloaded, user_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            sheet.title,
-            sheet.composer,
-            sheet.difficulty,
-            'MuseScore',
-            sheet.source_url,
-            sheet.thumbnail,
-            JSON.stringify(sheet.metadata),
-            0,
-            user_id || null
-          ]
-        );
-
-        saved.push({ id: result.id, title: sheet.title });
-
-      } catch (err) {
-        console.error(`保存 ${sheet.title} 失败:`, err.message);
-      }
+    // 从 sheets 表联查 title 和 id——按 midi_path 或 local_path 匹配文件名
+    const db = require('../models/db');
+    const rows = await db.query(
+      `SELECT id, title, midi_path, local_path FROM sheets WHERE midi_path IS NOT NULL OR local_path LIKE '%.mid%'`
+    );
+    const infoMap = new Map();
+    for (const r of rows) {
+      if (r.midi_path) infoMap.set(r.midi_path, { title: r.title, sheetId: r.id });
+      if (r.local_path && /\.midi?$/i.test(r.local_path))
+        infoMap.set(r.local_path, { title: r.title, sheetId: r.id });
     }
 
-    res.json({
-      message: `成功保存 ${saved.length} 首，跳过 ${skipped.length} 首`,
-      saved,
-      skipped
+    const enriched = files.map(f => {
+      const info = infoMap.get(f.filename);
+      return {
+        ...f,
+        name: info?.title || f.name,
+        sheetId: info?.sheetId || null,
+      };
     });
 
+    res.json(enriched);
   } catch (err) {
-    console.error('批量保存失败:', err);
-    res.status(500).json({
-      error: '批量保存失败',
-      message: err.message
-    });
+    console.error('获取 MIDI 列表失败:', err);
+    res.status(500).json({ error: '获取列表失败' });
+  }
+});
+
+/**
+ * GET /api/musescore/midi/:filename/notes
+ * 解析指定 MIDI 文件的音符
+ */
+router.get('/midi/:filename/notes', async (req, res) => {
+  try {
+    const { resolveMidiPath } = require('../services/musescore-dl');
+    const filepath = resolveMidiPath(req.params.filename);
+
+    if (!filepath) {
+      return res.status(404).json({ error: '文件不存在' });
+    }
+
+    const midiData = parseMidiFile(filepath);
+    res.json(midiData);
+  } catch (err) {
+    console.error('解析 MIDI 失败:', err);
+    res.status(500).json({ error: '解析失败' });
   }
 });
 

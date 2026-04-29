@@ -1,15 +1,52 @@
-node_modules
-npm-debug.log
+# Git / IDE / OS
 .git
 .gitignore
-README.md
-.env
-.env.example
-.nyc_output
-coverage
-.DS_Store
-*.md
-backend/node_modules
-frontend/node_modules
+.github
 .vscode
 .idea
+.claude
+**/.DS_Store
+
+# Node / 构建产物（容器内会重新装、重新构建）
+node_modules
+**/node_modules
+npm-debug.log*
+*.log
+.nyc_output
+coverage
+.cache
+.playwright-mcp
+
+# 环境变量（通过 docker-compose volume 挂载注入）
+.env
+**/.env
+**/.env.local
+
+# 数据/上传目录（生产由 host volume 挂载，不入镜像）
+data
+uploads
+
+# 历史 / 示例 / 旧版（不进镜像）
+frontend_old
+example
+index.html
+
+# 文档与素材（不进镜像）
+*.md
+*.png
+*.jpg
+*.jpeg
+chat.png
+findings.md
+task_plan.md
+progress.md
+
+# 前端构建产物（Dockerfile 内部会重新 build；本地 dist 不入镜像）
+frontend/dist
+
+# Docker 与部署脚本本身（避免循环包含）
+Dockerfile
+docker-compose*
+.dockerignore
+deploy.sh
+start.sh

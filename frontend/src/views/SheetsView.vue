@@ -6,7 +6,7 @@ import {
 } from 'naive-ui'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import { ref, onMounted, computed } from 'vue'
-import { SearchOutline, HeartOutline, Heart } from '@vicons/ionicons5'
+import { SearchOutline } from '@vicons/ionicons5'
 import { api } from '../api'
 
 const message = useMessage()

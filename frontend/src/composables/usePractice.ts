@@ -172,7 +172,6 @@ export function usePractice() {
   let stableNote = ''
   let stableCount = 0
   let waitForAttack = false   // 等待新一弓的起奏（音强上升）
-  let prevRms = 0             // 上一帧音强
   let rmsMin = 999            // 音强谷值追踪
   let matchedRms = 0          // 上次匹配时的音强
 
@@ -210,7 +209,6 @@ export function usePractice() {
             stableNote = ''
             stableCount = 0
           } else {
-            prevRms = rms
             rafId = requestAnimationFrame(processAudio)
             return
           }
@@ -265,7 +263,6 @@ export function usePractice() {
       }
     }
 
-    prevRms = rms
     rafId = requestAnimationFrame(processAudio)
   }
 

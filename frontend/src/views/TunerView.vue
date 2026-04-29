@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NSpace, NButton, NText, NGrid, NGi, NSlider, NInputNumber, NTag } from 'naive-ui'
+import { NCard, NSpace, NButton, NGrid, NGi, NSlider, NInputNumber } from 'naive-ui'
 import { useTuner, playReferenceNote } from '../composables/useTuner'
 import { useMetronome } from '../composables/useMetronome'
 import { ref } from 'vue'

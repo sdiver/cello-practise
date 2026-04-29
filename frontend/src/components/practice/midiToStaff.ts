@@ -110,7 +110,7 @@ export function splitToMeasures(
       const remainInMeasure = endMeasureTicks() - cursorTicks
       const restTicks = Math.min(untilTicks - cursorTicks, remainInMeasure)
       if (restTicks <= 0) break
-      const { duration, dots } = ticksToDuration(restTicks, ppq)
+      const { duration } = ticksToDuration(restTicks, ppq)
       currentMeasure.push({
         keys: ['b/4'], // 休止符占位
         duration: duration + 'r',

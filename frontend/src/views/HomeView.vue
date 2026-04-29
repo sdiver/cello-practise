@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NSpace, NGrid, NGi, NText, NIcon } from 'naive-ui'
+import { NCard, NSpace, NGrid, NGi, NIcon } from 'naive-ui'
 import { MusicalNotesOutline, MicOutline, DocumentTextOutline, ChatbubblesOutline } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'

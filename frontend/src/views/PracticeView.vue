@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import {
-  NCard, NSpace, NButton, NText, NProgress, NTag,
-  NGrid, NGi, NSelect, useMessage
-} from 'naive-ui'
+import { NSpace, useMessage } from 'naive-ui'
 import { ref, onMounted, nextTick } from 'vue'
 import { usePractice, PRESET_SONGS } from '../composables/usePractice'
 import StaffDisplay from '../components/practice/StaffDisplay.vue'
@@ -28,11 +25,6 @@ interface ImportedSong {
 const importedSongs = ref<ImportedSong[]>([])
 const currentXml = ref<string>('')
 const currentMidi = ref<any | null>(null)
-
-const songOptions = PRESET_SONGS.map((s, i) => ({
-  label: `${s.name} (${s.notes.length}个音符)`,
-  value: i
-}))
 
 function scrollToSheet() {
   nextTick(() => {

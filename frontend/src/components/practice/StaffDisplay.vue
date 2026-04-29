@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue'
-import { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, StaveConnector } from 'vexflow'
+import { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } from 'vexflow'
 
 interface NoteData {
   noteName: string
@@ -61,8 +61,7 @@ function renderStaff() {
 
     if (lineNotes.length === 0) continue
 
-    const vexNotes = lineNotes.map((n, i) => {
-      const globalIdx = startIdx + i
+    const vexNotes = lineNotes.map((n) => {
       const key = toVexKey(n.noteName, n.octave)
       const note = new StaveNote({
         keys: [key],
@@ -85,8 +84,8 @@ function renderStaff() {
     })
 
     const voice = new Voice({
-      num_beats: lineNotes.length,
-      beat_value: 4,
+      numBeats: lineNotes.length,
+      beatValue: 4,
     })
     voice.setStrict(false)
     voice.addTickables(vexNotes)

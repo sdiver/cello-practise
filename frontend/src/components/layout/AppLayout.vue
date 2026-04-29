@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NLayout, NLayoutHeader, NLayoutContent,
-  NMenu, NIcon, NSpace, NText, NButton, NDrawer, NDrawerContent
+  NMenu, NIcon, NButton, NDrawer, NDrawerContent
 } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import {

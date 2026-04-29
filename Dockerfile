@@ -4,6 +4,13 @@
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
+# 国内镜像源 + 网络优化（NAS 直连 npmjs.org 易超时）
+ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com \
+    NPM_CONFIG_FETCH_TIMEOUT=600000 \
+    NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false
+
 # 先装依赖（利用 Docker 缓存层）
 COPY frontend/package*.json ./
 RUN npm ci
@@ -20,6 +27,16 @@ WORKDIR /app/backend
 
 # 编译 native 模块需要的工具链
 RUN apk add --no-cache python3 make g++ py3-setuptools
+
+# 国内镜像源 + better-sqlite3 prebuild 二进制走淘宝镜像
+ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com \
+    NPM_CONFIG_FETCH_TIMEOUT=600000 \
+    NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false \
+    BETTER_SQLITE3_BINARY_HOST_MIRROR=https://registry.npmmirror.com/-/binary/better-sqlite3 \
+    SQLITE3_BINARY_HOST_MIRROR=https://registry.npmmirror.com/-/binary/sqlite3 \
+    npm_config_better_sqlite3_binary_host=https://registry.npmmirror.com/-/binary/better-sqlite3
 
 COPY backend/package*.json ./
 RUN npm ci --omit=dev

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
@@ -17,6 +18,16 @@ const musicxmlRoutes = require('./routes/musicxml');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// gzip 压缩——703KB 的 vendor chunk 可压到 ~190KB（反代未开 gzip 时此处兜底）
+app.use(compression({
+  level: 6,
+  threshold: 1024, // 大于 1KB 才压缩
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
+}));
 
 // 安全中间件
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));

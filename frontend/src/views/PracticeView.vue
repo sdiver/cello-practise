@@ -258,6 +258,14 @@ function getNoteColor(name: string): string {
         </div>
       </div>
 
+      <!-- 调试面板（仅跟练时显示）——一眼看出是音频卡还是 RAF 卡 -->
+      <div v-if="practice.isPlaying.value" class="debug-panel">
+        <span>FPS: <b :class="practice.debugFps.value < 30 ? 'bad' : 'good'">{{ practice.debugFps.value }}</b></span>
+        <span>RMS: <b :class="practice.debugRms.value > 0.005 ? 'good' : 'bad'">{{ practice.debugRms.value.toFixed(4) }}</b></span>
+        <span>音频: <b :class="practice.debugCtxState.value === 'running' ? 'good' : 'bad'">{{ practice.debugCtxState.value || '...' }}</b></span>
+        <span>帧数: {{ practice.debugFrameCount.value }}</span>
+      </div>
+
       <!-- 进度条 -->
       <div class="progress-bar-wrap">
         <div class="progress-bar">
@@ -757,6 +765,23 @@ function getNoteColor(name: string): string {
 .mic-error-tips code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: monospace; }
 .mic-error-tips a { color: #2563eb; text-decoration: underline; }
 .mic-error-card .reset-btn { margin-top: 10px; }
+
+/* 调试面板 */
+.debug-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 8px 14px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  color: #475569;
+}
+.debug-panel b { font-weight: 700; }
+.debug-panel .good { color: #16a34a; }
+.debug-panel .bad { color: #dc2626; }
 
 /* 移动端 */
 @media (max-width: 768px) {

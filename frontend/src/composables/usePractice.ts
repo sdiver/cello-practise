@@ -94,6 +94,11 @@ export function usePractice() {
   const elapsedTime = ref(0)
   const detectedNote = ref('')
   const detectedFreq = ref(0)
+  // 调试统计
+  const debugFps = ref(0)
+  const debugRms = ref(0)
+  const debugCtxState = ref('')
+  const debugFrameCount = ref(0)
 
   let audioCtx: AudioContext | null = null
   let analyser: AnalyserNode | null = null
@@ -181,12 +186,28 @@ export function usePractice() {
     return Math.sqrt(sum / buffer.length)
   }
 
+  // FPS 计数
+  let fpsLastTime = 0
+  let fpsCount = 0
+
   function processAudio() {
     if (!isPlaying.value || !analyser || !audioCtx || isCompleted.value) return
+
+    // FPS 统计——每秒更新一次
+    const now = performance.now()
+    fpsCount++
+    if (now - fpsLastTime >= 1000) {
+      debugFps.value = fpsCount
+      fpsCount = 0
+      fpsLastTime = now
+      debugCtxState.value = audioCtx.state
+    }
+    debugFrameCount.value++
 
     const buffer = new Float32Array(analyser.fftSize)
     analyser.getFloatTimeDomainData(buffer)
     const rms = getRms(buffer)
+    debugRms.value = rms
     const freq = detectPitch(buffer, audioCtx.sampleRate)
 
     if (freq > 0) {
@@ -361,6 +382,8 @@ export function usePractice() {
     notes, currentIndex, isPlaying, isCompleted,
     correctCount, wrongCount, progress, accuracy,
     elapsedTime, detectedNote, detectedFreq,
+    // 调试
+    debugFps, debugRms, debugCtxState, debugFrameCount,
     loadSong, loadFromMidi, start, stop, reset
   }
 }

@@ -31,10 +31,16 @@ const errorMsg = ref('')
 
 // 每个音符元素 → 对应原始音符索引（用于高亮）
 const noteElementMap = new Map<number, SVGElement[]>()
+// 每个音符索引 → 所在行号（用于滚屏：滚行更稳）
+const noteLineMap = new Map<number, number>()
+// 行高（render 时填）
+let renderedLineHeight = 160
+let renderedStartY = 30
 
 function clearContainer() {
   if (containerRef.value) containerRef.value.innerHTML = ''
   noteElementMap.clear()
+  noteLineMap.clear()
 }
 
 function buildVexNote(spec: StaffNoteSpec, clef: string): StaveNote {
@@ -83,6 +89,8 @@ function render() {
     const measureWidth = Math.floor((containerWidth - 40) / measuresPerLine)
     const startX = 20
     const startY = 30
+    renderedLineHeight = lineHeight
+    renderedStartY = startY
     const totalLines = Math.ceil(measures.length / measuresPerLine)
     const totalHeight = totalLines * lineHeight + 60
 
@@ -133,15 +141,30 @@ function render() {
       voice.draw(ctx, stave)
       beams.forEach(b => b.setContext(ctx).draw())
 
-      // 收集 SVG 元素用于高亮
+      // 收集 SVG 元素用于高亮——同时记录所在行（便于滚屏）
+      const svgRoot = containerRef.value!.querySelector('svg')
       vexNotes.forEach(({ spec, note }) => {
         if (spec.originalIndex < 0) return
-        const svgEl = (note as any).getAttribute?.('el') as SVGElement | undefined
+        let svgEl: SVGElement | null = null
+        // 方法 A：VexFlow 5 公开 API
+        const anyNote = note as any
+        if (typeof anyNote.getSVGElement === 'function') {
+          svgEl = anyNote.getSVGElement() as SVGElement | null
+        }
+        // 方法 B：通过 attrs.id 在 DOM 中查找
+        if (!svgEl) {
+          const id = anyNote.attrs?.id
+          if (id && svgRoot) {
+            svgEl = svgRoot.querySelector(`[id="${id}"]`) as SVGElement | null
+          }
+        }
         if (svgEl) {
           if (!noteElementMap.has(spec.originalIndex)) {
             noteElementMap.set(spec.originalIndex, [])
           }
           noteElementMap.get(spec.originalIndex)!.push(svgEl)
+          // 记录该音符所在行（用于滚屏：按行滚比按 BoundingRect 更稳）
+          noteLineMap.set(spec.originalIndex, lineIdx)
         }
       })
     })
@@ -151,43 +174,43 @@ function render() {
   }
 }
 
+// 设置某 SVG 元素及其子元素的填充色
+function setElementColor(el: SVGElement, color: string) {
+  el.style.fill = color
+  el.querySelectorAll('*').forEach(c => {
+    const child = c as SVGElement
+    child.style.fill = color
+    // VexFlow 中谱杠/符干用 stroke 上色
+    if (c.tagName === 'path' || c.tagName === 'line' || c.tagName === 'rect') {
+      child.style.stroke = color
+    }
+  })
+}
+
 function applyHighlight() {
   // 清除所有高亮
   noteElementMap.forEach(els => {
-    els.forEach(el => {
-      el.querySelectorAll('*').forEach(c => (c as SVGElement).style.fill = '')
-      ;(el as SVGElement).style.fill = ''
-    })
+    els.forEach(el => setElementColor(el, ''))
   })
   // 应用当前高亮
-  if (props.currentIndex >= 0) {
-    const els = noteElementMap.get(props.currentIndex)
-    if (els && els.length) {
-      els.forEach(el => {
-        el.querySelectorAll('*').forEach(c => (c as SVGElement).style.fill = '#3b82f6')
-        ;(el as SVGElement).style.fill = '#3b82f6'
-      })
-      // 自动滚屏：把当前音符滚到视口中部
-      scrollNoteIntoView(els[0])
-    }
+  if (props.currentIndex < 0) return
+  const els = noteElementMap.get(props.currentIndex)
+  if (els && els.length) {
+    els.forEach(el => setElementColor(el, '#3b82f6'))
   }
+  // 滚屏：按行号滚到当前音符所在行（顶部留半行空间）
+  const lineIdx = noteLineMap.get(props.currentIndex)
+  if (lineIdx !== undefined) scrollToLine(lineIdx)
 }
 
-function scrollNoteIntoView(noteEl: SVGElement) {
+function scrollToLine(lineIdx: number) {
   const container = containerRef.value
   if (!container) return
-  try {
-    const noteRect = noteEl.getBoundingClientRect()
-    const cRect = container.getBoundingClientRect()
-    // 当前音符在容器内的 top 偏移
-    const offsetTop = noteRect.top - cRect.top + container.scrollTop
-    // 目标：让音符位于容器视口中线
-    const target = offsetTop - container.clientHeight / 2 + noteRect.height / 2
-    container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
-  } catch {
-    // 兜底
-    noteEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
+  // 当前行 y 坐标
+  const lineY = renderedStartY + lineIdx * renderedLineHeight
+  // 让该行位于视口顶部下方约 30%（既不撞顶也能预读下一行）
+  const target = Math.max(0, lineY - container.clientHeight * 0.3)
+  container.scrollTo({ top: target, behavior: 'smooth' })
 }
 
 watch(() => props.notes, () => nextTick(render), { deep: false })

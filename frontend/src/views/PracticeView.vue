@@ -145,7 +145,11 @@ function handleResetSong() {
 
 async function handleStart() {
   try { await practice.start() }
-  catch { message.error('无法访问麦克风，请授权后重试') }
+  catch (e: any) {
+    // 显示具体错误（HTTPS 限制 / 浏览器不支持 / 用户拒绝授权）
+    const msg = e?.message || '无法访问麦克风，请授权后重试'
+    message.error(msg, { duration: 6000 })
+  }
 }
 
 onMounted(loadSavedMidi)

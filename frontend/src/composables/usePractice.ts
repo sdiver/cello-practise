@@ -281,6 +281,17 @@ export function usePractice() {
     // 标记第一个为active
     notes.value[0].status = 'active'
 
+    // HTTPS 校验——浏览器在非安全上下文（HTTP）下，
+    // 除 localhost 外不允许访问麦克风
+    if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      throw new Error(
+        '浏览器要求 HTTPS 才能访问麦克风。请通过 https:// 访问，或在 NAS 反代上配置 SSL 证书。'
+      )
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('当前浏览器不支持麦克风访问，请换 Chrome / Safari 最新版')
+    }
+
     audioCtx = new AudioContext()
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false }

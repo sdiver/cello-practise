@@ -25,7 +25,9 @@ class YINDetector {
     let rms = 0
     for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i]
     rms = Math.sqrt(rms / buffer.length)
-    if (rms < 0.02) return { frequency: -1, confidence: 0, rms }
+    // 移动端 8x GainNode 放大后，RMS 已自然提升；阈值仍按桌面 0.02 不必再降
+    // （此处函数签名不易拿 isMobile，统一用 0.005 兼顾两端）
+    if (rms < 0.005) return { frequency: -1, confidence: 0, rms }
 
     const halfLen = buffer.length / 2
     const yinBuffer = new Float32Array(halfLen)
@@ -120,15 +122,32 @@ export function useTuner() {
 
   async function start() {
     try {
+      // 移动端检测——iPad/iPhone/Android 麦克风灵敏度低，需 AGC + 软放大
+      const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent))
+
       audioCtx = new AudioContext()
+      if (audioCtx.state === 'suspended') {
+        try { await audioCtx.resume() } catch {}
+      }
       detector = new YINDetector(audioCtx.sampleRate)
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false }
+        audio: isMobile
+          ? { echoCancellation: false, autoGainControl: true, noiseSuppression: false }
+          : { echoCancellation: false, autoGainControl: false, noiseSuppression: false }
       })
       const source = audioCtx.createMediaStreamSource(stream)
       analyser = audioCtx.createAnalyser()
       analyser.fftSize = 4096
-      source.connect(analyser)
+      // 移动端额外加 GainNode 8x 放大
+      if (isMobile) {
+        const gainNode = audioCtx.createGain()
+        gainNode.gain.value = 8
+        source.connect(gainNode)
+        gainNode.connect(analyser)
+      } else {
+        source.connect(analyser)
+      }
       isRunning.value = true
       processAudio()
     } catch (e) {

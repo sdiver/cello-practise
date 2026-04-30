@@ -29,9 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 const containerRef = ref<HTMLDivElement | null>(null)
 const errorMsg = ref('')
 
-// 每个音符元素 → 对应原始音符索引（用于高亮）
-const noteElementMap = new Map<number, SVGElement[]>()
-// 每个音符索引 → 所在行号（用于滚屏：滚行更稳）
+// 每个音符索引 → 所在行号（用于滚屏：按行号滚比 BoundingRect 稳）
 const noteLineMap = new Map<number, number>()
 // 行高（render 时填）
 let renderedLineHeight = 160
@@ -39,11 +37,10 @@ let renderedStartY = 30
 
 function clearContainer() {
   if (containerRef.value) containerRef.value.innerHTML = ''
-  noteElementMap.clear()
   noteLineMap.clear()
 }
 
-function buildVexNote(spec: StaffNoteSpec, clef: string): StaveNote {
+function buildVexNote(spec: StaffNoteSpec, clef: string, highlight: boolean): StaveNote {
   // duration: 'q' / 'qd'(附点四分) / 'qr'(休止)
   const note = new StaveNote({
     keys: spec.keys,
@@ -58,6 +55,10 @@ function buildVexNote(spec: StaffNoteSpec, clef: string): StaveNote {
   const dotCount = (spec.duration.match(/d/g) || []).length
   for (let i = 0; i < dotCount; i++) {
     Dot.buildAndAttach([note], { all: true })
+  }
+  // 当前音符高亮——VexFlow 5 setStyle 直接生效，比 DOM 操作更稳
+  if (highlight) {
+    note.setStyle({ fillStyle: '#3b82f6', strokeStyle: '#3b82f6' })
   }
   return note
 }
@@ -114,9 +115,10 @@ function render() {
       }
       stave.setContext(ctx).draw()
 
-      // 构建 voice
+      // 构建 voice——当前 currentIndex 对应的音符渲染时即上色
       const vexNotes = measure.notes.map(spec => {
-        const note = buildVexNote(spec, clef)
+        const isCurrent = spec.originalIndex >= 0 && spec.originalIndex === props.currentIndex
+        const note = buildVexNote(spec, clef, isCurrent)
         return { spec, note }
       })
 
@@ -141,66 +143,16 @@ function render() {
       voice.draw(ctx, stave)
       beams.forEach(b => b.setContext(ctx).draw())
 
-      // 收集 SVG 元素用于高亮——同时记录所在行（便于滚屏）
-      const svgRoot = containerRef.value!.querySelector('svg')
-      vexNotes.forEach(({ spec, note }) => {
+      // 记录每个音符所在行（用于滚屏定位）
+      vexNotes.forEach(({ spec }) => {
         if (spec.originalIndex < 0) return
-        let svgEl: SVGElement | null = null
-        // 方法 A：VexFlow 5 公开 API
-        const anyNote = note as any
-        if (typeof anyNote.getSVGElement === 'function') {
-          svgEl = anyNote.getSVGElement() as SVGElement | null
-        }
-        // 方法 B：通过 attrs.id 在 DOM 中查找
-        if (!svgEl) {
-          const id = anyNote.attrs?.id
-          if (id && svgRoot) {
-            svgEl = svgRoot.querySelector(`[id="${id}"]`) as SVGElement | null
-          }
-        }
-        if (svgEl) {
-          if (!noteElementMap.has(spec.originalIndex)) {
-            noteElementMap.set(spec.originalIndex, [])
-          }
-          noteElementMap.get(spec.originalIndex)!.push(svgEl)
-          // 记录该音符所在行（用于滚屏：按行滚比按 BoundingRect 更稳）
-          noteLineMap.set(spec.originalIndex, lineIdx)
-        }
+        noteLineMap.set(spec.originalIndex, lineIdx)
       })
     })
   } catch (e: any) {
     console.error('[MidiSheet] 渲染失败:', e)
     errorMsg.value = `谱面渲染失败：${e?.message || e}`
   }
-}
-
-// 设置某 SVG 元素及其子元素的填充色
-function setElementColor(el: SVGElement, color: string) {
-  el.style.fill = color
-  el.querySelectorAll('*').forEach(c => {
-    const child = c as SVGElement
-    child.style.fill = color
-    // VexFlow 中谱杠/符干用 stroke 上色
-    if (c.tagName === 'path' || c.tagName === 'line' || c.tagName === 'rect') {
-      child.style.stroke = color
-    }
-  })
-}
-
-function applyHighlight() {
-  // 清除所有高亮
-  noteElementMap.forEach(els => {
-    els.forEach(el => setElementColor(el, ''))
-  })
-  // 应用当前高亮
-  if (props.currentIndex < 0) return
-  const els = noteElementMap.get(props.currentIndex)
-  if (els && els.length) {
-    els.forEach(el => setElementColor(el, '#3b82f6'))
-  }
-  // 滚屏：按行号滚到当前音符所在行（顶部留半行空间）
-  const lineIdx = noteLineMap.get(props.currentIndex)
-  if (lineIdx !== undefined) scrollToLine(lineIdx)
 }
 
 function scrollToLine(lineIdx: number) {
@@ -214,7 +166,19 @@ function scrollToLine(lineIdx: number) {
 }
 
 watch(() => props.notes, () => nextTick(render), { deep: false })
-watch(() => props.currentIndex, applyHighlight)
+
+// currentIndex 变化时重新 render（VexFlow setStyle 必须在 render 时生效）
+// throttle 防止跟练时过频重画——音符变化最快也是数百毫秒一次，这里 80ms 足够
+let highlightTimer: number | null = null
+watch(() => props.currentIndex, () => {
+  if (highlightTimer) clearTimeout(highlightTimer)
+  highlightTimer = window.setTimeout(() => {
+    render()
+    // render 后用行号滚屏（noteLineMap 在 render 时填充）
+    const lineIdx = noteLineMap.get(props.currentIndex)
+    if (lineIdx !== undefined) scrollToLine(lineIdx)
+  }, 30)
+})
 
 onMounted(() => {
   nextTick(render)

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { NSpace, useMessage } from 'naive-ui'
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, defineAsyncComponent } from 'vue'
 import { usePractice, PRESET_SONGS } from '../composables/usePractice'
 import StaffDisplay from '../components/practice/StaffDisplay.vue'
-import MusicXmlDisplay from '../components/practice/MusicXmlDisplay.vue'
 import MidiSheetDisplay from '../components/practice/MidiSheetDisplay.vue'
+// MusicXmlDisplay 含 OSMD（~1MB）——只在选 MusicXML 时才加载
+const MusicXmlDisplay = defineAsyncComponent(() =>
+  import('../components/practice/MusicXmlDisplay.vue')
+)
 import { api } from '../api'
 
 const message = useMessage()
@@ -143,12 +146,16 @@ function handleResetSong() {
   currentMidi.value = null
 }
 
+const micErrorMsg = ref('')
+
 async function handleStart() {
+  micErrorMsg.value = ''
   try { await practice.start() }
   catch (e: any) {
-    // 显示具体错误（HTTPS 限制 / 浏览器不支持 / 用户拒绝授权）
+    // 同时显示 toast + modal 区域——iPad Safari toast 易错过
     const msg = e?.message || '无法访问麦克风，请授权后重试'
-    message.error(msg, { duration: 6000 })
+    micErrorMsg.value = msg
+    message.error(msg, { duration: 8000 })
   }
 }
 
@@ -308,6 +315,22 @@ function getNoteColor(name: string): string {
           <!-- 当前活跃指示 -->
           <div v-if="note.status === 'active'" class="active-ring" />
         </div>
+      </div>
+
+      <!-- 麦克风错误显眼显示（iPad Safari toast 易错过） -->
+      <div v-if="micErrorMsg" class="mic-error-card">
+        <div class="mic-error-title">🎤 麦克风启用失败</div>
+        <div class="mic-error-body">{{ micErrorMsg }}</div>
+        <div class="mic-error-tips">
+          <strong>iPad / iPhone 用户排查：</strong>
+          <ol>
+            <li>地址栏左侧 <code>aA</code> → 网站设置 → 麦克风 → 选「允许」</li>
+            <li>iOS 设置 → Safari → 麦克风 → 选「询问」（不能是「拒绝」）</li>
+            <li>用 <a href="https://webrtc.github.io/samples/src/content/devices/input-output/" target="_blank">webrtc 官方示例</a>验证 iOS 麦克风本身可用</li>
+            <li>地址栏须显示 🔒（HTTPS），iOS 14+ 强制要求</li>
+          </ol>
+        </div>
+        <button class="big-btn reset-btn" @click="micErrorMsg = ''">关闭</button>
       </div>
 
       <!-- 操作按钮 -->
@@ -717,6 +740,23 @@ function getNoteColor(name: string): string {
 }
 .song-item.imported:hover .song-delete { opacity: 1; }
 .song-delete:hover { background: #fee2e2; opacity: 1; }
+
+/* 麦克风错误卡片 */
+.mic-error-card {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 2px solid #fca5a5;
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+}
+.mic-error-title { font-size: 18px; font-weight: 700; color: #b91c1c; margin-bottom: 8px; }
+.mic-error-body { color: #7f1d1d; font-size: 15px; margin-bottom: 12px; word-break: break-word; }
+.mic-error-tips { background: white; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #475569; line-height: 1.7; }
+.mic-error-tips ol { margin: 6px 0 0 20px; padding: 0; }
+.mic-error-tips li { margin-bottom: 4px; }
+.mic-error-tips code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: monospace; }
+.mic-error-tips a { color: #2563eb; text-decoration: underline; }
+.mic-error-card .reset-btn { margin-top: 10px; }
 
 /* 移动端 */
 @media (max-width: 768px) {

@@ -360,7 +360,18 @@ export function usePractice() {
     const source = audioCtx.createMediaStreamSource(stream)
     analyser = audioCtx.createAnalyser()
     analyser.fftSize = 4096
-    source.connect(analyser)
+
+    // 移动端额外加一道 GainNode 软放大——iOS AGC 对极弱信号不工作
+    const isMobileUA = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent))
+    if (isMobileUA) {
+      const gainNode = audioCtx.createGain()
+      gainNode.gain.value = 8 // 8 倍放大，覆盖 iPad 低灵敏麦克风
+      source.connect(gainNode)
+      gainNode.connect(analyser)
+    } else {
+      source.connect(analyser)
+    }
 
     startTime.value = Date.now()
     isPlaying.value = true

@@ -140,12 +140,20 @@ export function usePractice() {
     loadSong(songNotes)
   }
 
+  // 移动端麦克风信号弱，降低 RMS 门限
+  const PITCH_RMS_FLOOR = (() => {
+    if (typeof navigator === 'undefined') return 0.02
+    const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent))
+    return isMobile ? 0.003 : 0.02
+  })()
+
   // YIN pitch detection (simplified)
   function detectPitch(buffer: Float32Array, sampleRate: number): number {
     let rms = 0
     for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i]
     rms = Math.sqrt(rms / buffer.length)
-    if (rms < 0.02) return -1
+    if (rms < PITCH_RMS_FLOOR) return -1
 
     const halfLen = Math.floor(buffer.length / 2)
     const yin = new Float32Array(halfLen)
@@ -221,7 +229,8 @@ export function usePractice() {
         if (waitForAttack) {
           rmsMin = Math.min(rmsMin, rms)
           // 音强从谷值回升超过阈值，视为新一次起奏
-          const attackDetected = rms > rmsMin * 1.8 && rms > 0.03
+          // 起奏：音强从谷值回升 1.8 倍，且超过基础地板的 2.5 倍（移动端 0.0075，桌面 0.05）
+          const attackDetected = rms > rmsMin * 1.8 && rms > PITCH_RMS_FLOOR * 2.5
           // 或者音强下降到很低再回来
           const dipDetected = rmsMin < matchedRms * 0.4
 
@@ -276,7 +285,8 @@ export function usePractice() {
       // 无音检测到，说明有间断，可以解除等待
       if (waitForAttack) {
         rmsMin = Math.min(rmsMin, rms)
-        if (rms < 0.015) {
+        // 间断检测：音强降到地板的 1.25 倍以下，视为该音结束
+        if (rms < PITCH_RMS_FLOOR * 1.25) {
           waitForAttack = false
           stableNote = ''
           stableCount = 0
@@ -319,10 +329,16 @@ export function usePractice() {
       try { await audioCtx.resume() } catch {}
     }
 
+    // 移动端（iOS / Android）开 AGC——内置麦离乐器远，需自动放大；
+    // 桌面通常不开（avoid 回声消除抹掉大提琴泛音）
+    const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent)) // iPad iPadOS 13+ UA
+    const audioConstraints = isMobile
+      ? { echoCancellation: false, autoGainControl: true, noiseSuppression: false }
+      : { echoCancellation: false, autoGainControl: false, noiseSuppression: false }
+
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false }
-      })
+      stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
     } catch (err: any) {
       // 详细错误分类——iOS Safari 常见 DOMException name
       const name = err?.name || ''

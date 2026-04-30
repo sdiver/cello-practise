@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NSpace, useMessage } from 'naive-ui'
-import { ref, onMounted, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, nextTick, defineAsyncComponent } from 'vue'
 import { usePractice, PRESET_SONGS } from '../composables/usePractice'
 import StaffDisplay from '../components/practice/StaffDisplay.vue'
 import MidiSheetDisplay from '../components/practice/MidiSheetDisplay.vue'
@@ -147,6 +147,23 @@ function handleResetSong() {
 }
 
 const micErrorMsg = ref('')
+// 完整音符网格折叠状态
+const showAllNotes = ref(false)
+
+// 紧凑窗口：当前音前 2 个 + 当前 + 后 6 个，共 9 个
+const stripVisibleNotes = computed(() => {
+  const all = practice.notes.value
+  if (!all.length) return []
+  const cur = practice.currentIndex.value
+  const start = Math.max(0, cur - 2)
+  const end = Math.min(all.length, start + 9)
+  // start 已贴左边时，仍尽量凑 9 个
+  const realStart = Math.max(0, end - 9)
+  return all.slice(realStart, end).map((n: any, i: number) => ({
+    ...n,
+    _idx: realStart + i,
+  }))
+})
 
 async function handleStart() {
   micErrorMsg.value = ''
@@ -303,24 +320,38 @@ function getNoteColor(name: string): string {
         />
       </div>
 
-      <!-- 大音符方块 -->
-      <div class="notes-grid">
+      <!-- 紧凑型音符聚焦栏：当前音放大居中，前后预览 -->
+      <div class="notes-strip">
+        <div class="strip-window">
+          <div
+            v-for="note in stripVisibleNotes"
+            :key="note._idx"
+            class="strip-note"
+            :class="[note.status, { current: note._idx === practice.currentIndex.value }]"
+            :style="{ '--note-color': getNoteColor(note.noteName) }"
+          >
+            <span class="strip-name">{{ note.noteName }}</span>
+            <span class="strip-oct">{{ note.octave }}</span>
+            <span v-if="note.status === 'correct'" class="strip-check">✓</span>
+          </div>
+        </div>
+        <button class="strip-toggle" @click="showAllNotes = !showAllNotes">
+          {{ showAllNotes ? '收起 ▲' : `展开全部 (${practice.notes.value.length}音) ▼` }}
+        </button>
+      </div>
+
+      <!-- 完整音符网格（默认折叠） -->
+      <div v-if="showAllNotes" class="notes-grid">
         <div
           v-for="(note, i) in practice.notes.value"
           :key="i"
           class="note-block"
           :class="note.status"
-          :style="{
-            '--note-color': getNoteColor(note.noteName),
-          }"
+          :style="{ '--note-color': getNoteColor(note.noteName) }"
         >
           <span class="note-letter">{{ note.noteName }}</span>
           <span class="note-oct">{{ note.octave }}</span>
-
-          <!-- 正确标记 -->
           <span v-if="note.status === 'correct'" class="note-star">⭐</span>
-
-          <!-- 当前活跃指示 -->
           <div v-if="note.status === 'active'" class="active-ring" />
         </div>
       </div>
@@ -765,6 +796,108 @@ function getNoteColor(name: string): string {
 .mic-error-tips code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: monospace; }
 .mic-error-tips a { color: #2563eb; text-decoration: underline; }
 .mic-error-card .reset-btn { margin-top: 10px; }
+
+/* 紧凑型音符聚焦栏 */
+.notes-strip {
+  margin: 16px 0 8px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+.strip-window {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 6px 0;
+  scroll-behavior: smooth;
+}
+.strip-note {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.55;
+}
+.strip-note.correct {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-color: #22c55e;
+  opacity: 0.85;
+}
+.strip-note.wrong {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-color: #ef4444;
+  opacity: 0.85;
+}
+.strip-note.current {
+  width: 76px;
+  height: 76px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border-color: var(--note-color, #3b82f6);
+  border-width: 3px;
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+  animation: stripPulse 1.6s ease-in-out infinite;
+}
+@keyframes stripPulse {
+  0%, 100% { box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35); }
+  50% { box-shadow: 0 6px 28px rgba(59, 130, 246, 0.6); }
+}
+.strip-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--note-color, #475569);
+}
+.strip-note.current .strip-name { font-size: 26px; }
+.strip-oct {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: -2px;
+}
+.strip-note.current .strip-oct { font-size: 13px; }
+.strip-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: white;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.strip-toggle {
+  display: block;
+  margin: 12px auto 0;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.strip-toggle:hover {
+  background: white;
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
 
 /* 调试面板 */
 .debug-panel {

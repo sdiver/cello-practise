@@ -281,21 +281,45 @@ export function usePractice() {
     // 标记第一个为active
     notes.value[0].status = 'active'
 
-    // HTTPS 校验——浏览器在非安全上下文（HTTP）下，
-    // 除 localhost 外不允许访问麦克风
+    // 收集环境信息——失败时一并展示，便于排查
+    const envInfo = `[${location.protocol}//${location.host}, secure=${window.isSecureContext}]`
+
+    // HTTPS 校验
     if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-      throw new Error(
-        '浏览器要求 HTTPS 才能访问麦克风。请通过 https:// 访问，或在 NAS 反代上配置 SSL 证书。'
-      )
+      throw new Error(`需 HTTPS 访问麦克风。当前 ${envInfo}——请用 https:// 打开。`)
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('当前浏览器不支持麦克风访问，请换 Chrome / Safari 最新版')
+      throw new Error(`此浏览器无 mediaDevices.getUserMedia API。${envInfo}`)
     }
 
+    // iOS Safari 必须先 resume AudioContext（user gesture 内）
     audioCtx = new AudioContext()
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false }
-    })
+    if (audioCtx.state === 'suspended') {
+      try { await audioCtx.resume() } catch {}
+    }
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false }
+      })
+    } catch (err: any) {
+      // 详细错误分类——iOS Safari 常见 DOMException name
+      const name = err?.name || ''
+      const reason = (() => {
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          return '麦克风权限被拒。iOS 用户：设置 → Safari → 麦克风 → 允许；并清除该网站的权限缓存（地址栏左侧 ⓘ → 网站设置 → 麦克风 → 询问）'
+        }
+        if (name === 'NotFoundError') return '未检测到麦克风设备'
+        if (name === 'NotReadableError') return '麦克风被其他程序占用'
+        if (name === 'OverconstrainedError') {
+          return '设备不支持指定的音频参数（瑜尝试降级再试）'
+        }
+        if (name === 'SecurityError') return `安全上下文限制（${envInfo}）`
+        if (name === 'TypeError') return '调用 getUserMedia 参数错误'
+        return err?.message || '未知错误'
+      })()
+      throw new Error(`麦克风启用失败 [${name || 'Error'}]: ${reason}`)
+    }
     const source = audioCtx.createMediaStreamSource(stream)
     analyser = audioCtx.createAnalyser()
     analyser.fftSize = 4096

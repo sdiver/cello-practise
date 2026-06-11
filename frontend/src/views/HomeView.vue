@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NCard, NSpace, NGrid, NGi, NIcon } from 'naive-ui'
-import { MusicalNotesOutline, MicOutline, DocumentTextOutline, ChatbubblesOutline } from '@vicons/ionicons5'
+import { MusicalNotesOutline, MicOutline, DocumentTextOutline, ChatbubblesOutline, PulseOutline } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { api } from '../api'
@@ -14,6 +14,7 @@ const quickActions = [
   { label: '调音器', desc: '校准四根弦', icon: MusicalNotesOutline, route: 'tuner', gradient: 'linear-gradient(135deg, #3b82f6, #6366f1)' },
   { label: '跟练', desc: '弹对亮灯', icon: MicOutline, route: 'practice', gradient: 'linear-gradient(135deg, #ef4444, #f97316)' },
   { label: '曲谱库', desc: '浏览搜索', icon: DocumentTextOutline, route: 'sheets', gradient: 'linear-gradient(135deg, #22c55e, #16a34a)' },
+  { label: '录音分析', desc: '音准图表', icon: PulseOutline, route: 'analysis', gradient: 'linear-gradient(135deg, #06b6d4, #0891b2)' },
   { label: 'AI教练', desc: '随时提问', icon: ChatbubblesOutline, route: 'chat', gradient: 'linear-gradient(135deg, #8b5cf6, #a855f7)' },
 ]
 
@@ -55,7 +56,7 @@ function getStatValue(key: string) {
     </div>
 
     <!-- 快捷入口 -->
-    <n-grid :cols="4" :x-gap="14" :y-gap="14" responsive="screen" cols-s="2" cols-xs="2">
+    <n-grid :cols="5" :x-gap="14" :y-gap="14" responsive="screen" cols-s="2" cols-xs="2">
       <n-gi v-for="action in quickActions" :key="action.route">
         <div
           class="action-card"

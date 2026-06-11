@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { title: '曲谱', icon: 'sheets' }
     },
     {
+      path: '/analysis',
+      name: 'analysis',
+      component: () => import('../views/AnalysisView.vue'),
+      meta: { title: '录音分析', icon: 'analysis' }
+    },
+    {
       path: '/progress',
       name: 'progress',
       component: () => import('../views/ProgressView.vue'),

@@ -9,7 +9,7 @@ import type { MenuOption } from 'naive-ui'
 import {
   MusicalNotesOutline, HomeOutline, MicOutline,
   DocumentTextOutline, StatsChartOutline, ChatbubblesOutline,
-  MenuOutline
+  MenuOutline, PulseOutline
 } from '@vicons/ionicons5'
 import { h } from 'vue'
 
@@ -27,6 +27,7 @@ const menuOptions: MenuOption[] = [
   { label: '调音器', key: 'tuner', icon: renderIcon(MusicalNotesOutline) },
   { label: '练习', key: 'practice', icon: renderIcon(MicOutline) },
   { label: '曲谱', key: 'sheets', icon: renderIcon(DocumentTextOutline) },
+  { label: '录音分析', key: 'analysis', icon: renderIcon(PulseOutline) },
   { label: '进度', key: 'progress', icon: renderIcon(StatsChartOutline) },
   { label: 'AI教练', key: 'chat', icon: renderIcon(ChatbubblesOutline) },
 ]
